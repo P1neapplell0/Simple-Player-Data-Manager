@@ -1,0 +1,63 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'idea'
+    id 'net.minecraftforge.gradle' version '6.0.54'
+}
+
+version = "${mod_version}+mc${minecraft_version}-forge"
+group = mod_group_id
+base { archivesName = mod_id }
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(17)
+    withSourcesJar()
+    withJavadocJar()
+}
+
+minecraft {
+    mappings channel: 'official', version: minecraft_version
+    copyIdeResources = true
+    runs {
+        configureEach {
+            workingDirectory project.file('run')
+            property 'forge.logging.console.level', 'info'
+            property 'forge.enabledGameTestNamespaces', mod_id
+            mods {
+                "${mod_id}" { source sourceSets.main }
+            }
+        }
+        client {}
+        server { args '--nogui' }
+        gameTestServer { workingDirectory project.file('runs/gameTest') }
+    }
+}
+
+repositories { mavenCentral() }
+dependencies { minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}" }
+
+tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+tasks.withType(Javadoc).configureEach {
+    options.encoding = 'UTF-8'
+    options.addStringOption('Xdoclint:none', '-quiet')
+}
+
+processResources {
+    def properties = [mod_id: mod_id, mod_version: mod_version, mod_name: mod_name,
+                      mod_authors: mod_authors, mod_license: mod_license, mod_description: mod_description]
+    inputs.properties properties
+    filesMatching('META-INF/mods.toml') { expand properties }
+}
+
+jar { finalizedBy 'reobfJar' }
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) { from components.java }
+    }
+    repositories { maven { url = "file://${project.projectDir}/repo" } }
+}
+
+idea.module {
+    downloadSources = true
+    downloadJavadoc = true
+}
